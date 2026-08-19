@@ -33,7 +33,7 @@ export class InitSchema1710000000000 implements MigrationInterface {
 
     // Partial index: only high readings are indexed, keeping the high-events query cheap
     // and the index small. Usable only when the predicate matches the default threshold;
-    // a custom ?threshold= falls back to idx_hrr_patient_time. See DESIGN.md.
+    // a custom ?threshold= falls back to idx_hrr_patient_time.
     await queryRunner.query(`
       CREATE INDEX idx_hrr_high
         ON heart_rate_readings ("timestamp" DESC, patient_id)
