@@ -29,7 +29,7 @@ export class TrackPatientInterceptor implements NestInterceptor {
       return next.handle();
     }
 
-    // `next` only — a 404 or a validation failure must not inflate the counter.
+    // `next` only: a 404 or a validation failure must not inflate the counter.
     return next.handle().pipe(
       tap({
         next: () => {

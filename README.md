@@ -1,8 +1,8 @@
 # Patient Heart-Rate Service
 
-A NestJS + PostgreSQL backend for patient heart-rate telemetry: high heart-rate events,
-per-patient analytics over a time range, and tracking of how often each patient's data is
-requested.
+A NestJS + PostgreSQL backend for patient heart-rate data. It reports high heart-rate
+events, calculates analytics per patient over a time range, and counts how often each
+patient's data is requested.
 
 ## Quick start
 
@@ -12,7 +12,7 @@ docker compose up --build     # migrates, seeds and serves
 ```
 
 Then open **http://localhost:3000/docs** for Swagger. Every endpoint needs the
-`x-api-key` header (`local-dev-key` by default); health checks do not.
+`x-api-key` header (`local-dev-key` by default). Health checks do not.
 
 ```bash
 curl -H 'x-api-key: local-dev-key' http://localhost:3000/api/v1/heart-rate/high-events
@@ -44,8 +44,8 @@ Base path `/api/v1`.
 | GET | `/request-stats` | All counters, most requested first |
 | GET | `/health/live`, `/health/ready` | Probes (no API key) |
 
-Query parameters: `from` / `to` (ISO-8601, inclusive, optional), `threshold` (1–299,
-defaults to `HIGH_HEART_RATE_THRESHOLD`), `page` (≥1), `limit` (1–100).
+Query parameters: `from` and `to` (ISO-8601, inclusive, both optional), `threshold`
+(1 to 299, defaults to `HIGH_HEART_RATE_THRESHOLD`), `page` (1 or more), `limit` (1 to 100).
 
 ```bash
 K='x-api-key: local-dev-key'
@@ -56,21 +56,21 @@ curl -H "$K" "$B/patients/1/heart-rate/analytics?from=2024-03-01T00:00:00Z&to=20
 curl -H "$K" "$B/patients/1/request-stats"
 ```
 
-Responses are wrapped as `{ "data": …, "meta": { "requestId", "timestamp" } }`; errors as
-`{ "statusCode", "code", "message", "requestId", "timestamp", "path" }`.
+Successful responses are wrapped as `{ "data": ..., "meta": { "requestId", "timestamp" } }`.
+Errors use `{ "statusCode", "code", "message", "requestId", "timestamp", "path" }`.
 
 ## Environment
 
 | Variable | Default | Purpose |
 |---|---|---|
 | `PORT` | `3000` | HTTP port |
-| `DATABASE_HOST` / `_PORT` / `_USER` / `_PASSWORD` / `_NAME` | — | PostgreSQL connection |
-| `API_KEY` | — | Required in `x-api-key` |
-| `HIGH_HEART_RATE_THRESHOLD` | `100` | A reading strictly above this is an event |
+| `DATABASE_HOST` / `_PORT` / `_USER` / `_PASSWORD` / `_NAME` | none | PostgreSQL connection |
+| `API_KEY` | none | Required in the `x-api-key` header |
+| `HIGH_HEART_RATE_THRESHOLD` | `100` | A reading above this value is an event |
 | `CORS_ORIGINS` | `*` | Comma-separated allowlist |
 | `RATE_LIMIT_TTL_MS` / `RATE_LIMIT_REQUESTS` | `60000` / `120` | Throttling window |
 
-Invalid or missing configuration fails at boot rather than at first request.
+Missing or invalid configuration fails at startup, not on the first request.
 
 ## Tests
 
@@ -83,4 +83,4 @@ npm run lint
 ## Design notes
 
 See **[DESIGN.md](DESIGN.md)** for the architecture, the decisions and their trade-offs,
-the edge-case contract, and suggested improvements.
+the list of handled edge cases, and suggested improvements.
