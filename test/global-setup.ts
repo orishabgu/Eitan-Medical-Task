@@ -7,7 +7,6 @@ import { seed } from '../src/database/seed';
 loadEnv();
 
 export const TEST_DATABASE = process.env.TEST_DATABASE_NAME ?? 'eitan_medical_test';
-export const TEST_API_KEY = 'e2e-test-key';
 
 async function createDatabaseIfMissing(): Promise<void> {
   const admin = new Client({
@@ -33,7 +32,6 @@ async function createDatabaseIfMissing(): Promise<void> {
 
 export default async function globalSetup(): Promise<void> {
   process.env.DATABASE_NAME = TEST_DATABASE;
-  process.env.API_KEY = TEST_API_KEY;
   process.env.HIGH_HEART_RATE_THRESHOLD = '100';
   process.env.NODE_ENV = 'test';
   // The suite deliberately fires bursts of requests from one address; rate limiting is

@@ -5,7 +5,6 @@ import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
 import { configureApp } from './app-setup';
 import { AppModule } from './app.module';
-import { API_KEY_HEADER } from './common/api-key.guard';
 import { AppConfig } from './config/configuration';
 
 async function bootstrap(): Promise<void> {
@@ -23,7 +22,6 @@ async function bootstrap(): Promise<void> {
     .setTitle('Patient Heart-Rate Service')
     .setDescription('High heart-rate events, per-patient analytics and request tracking.')
     .setVersion('1.0')
-    .addApiKey({ type: 'apiKey', name: API_KEY_HEADER, in: 'header' }, 'apiKey')
     .build();
   SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, swagger));
 

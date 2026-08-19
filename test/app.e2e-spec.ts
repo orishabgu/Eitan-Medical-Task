@@ -2,9 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
-import { API_KEY_HEADER } from '../src/common/api-key.guard';
 import { createTestApp } from './create-app';
-import { TEST_API_KEY } from './global-setup';
 
 const API = '/api/v1';
 
@@ -12,8 +10,7 @@ describe('Patient heart-rate API (e2e)', () => {
   let app: INestApplication<App>;
   let dataSource: DataSource;
 
-  const get = (path: string) =>
-    request(app.getHttpServer()).get(path).set(API_KEY_HEADER, TEST_API_KEY);
+  const get = (path: string) => request(app.getHttpServer()).get(path);
 
   beforeAll(async () => {
     app = await createTestApp();
@@ -26,26 +23,6 @@ describe('Patient heart-rate API (e2e)', () => {
 
   beforeEach(async () => {
     await dataSource.query('TRUNCATE patient_request_counters');
-  });
-
-  describe('authentication', () => {
-    it('rejects a request with no API key', async () => {
-      const response = await request(app.getHttpServer()).get(`${API}/patients`);
-
-      expect(response.status).toBe(401);
-      expect(response.body).toMatchObject({ code: 'UNAUTHORIZED' });
-    });
-
-    it('rejects a request with the wrong API key', async () => {
-      await request(app.getHttpServer())
-        .get(`${API}/patients`)
-        .set(API_KEY_HEADER, 'wrong')
-        .expect(401);
-    });
-
-    it('leaves health checks open', async () => {
-      await request(app.getHttpServer()).get(`${API}/health/live`).expect(200);
-    });
   });
 
   describe('GET /heart-rate/high-events', () => {

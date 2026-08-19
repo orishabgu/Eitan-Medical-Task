@@ -11,11 +11,10 @@ cp .env.example .env
 docker compose up --build     # migrates, seeds and serves
 ```
 
-Then open **http://localhost:3000/docs** for Swagger. Every endpoint needs the
-`x-api-key` header (`local-dev-key` by default). Health checks do not.
+Then open **http://localhost:3000/docs** for Swagger.
 
 ```bash
-curl -H 'x-api-key: local-dev-key' http://localhost:3000/api/v1/heart-rate/high-events
+curl http://localhost:3000/api/v1/heart-rate/high-events
 ```
 
 <details>
@@ -42,19 +41,18 @@ Base path `/api/v1`.
 | GET | `/patients/:id/heart-rate/analytics` | Average, min and max over a range |
 | GET | `/patients/:id/request-stats` | How often this patient has been requested |
 | GET | `/request-stats` | All counters, most requested first |
-| GET | `/health/live`, `/health/ready` | Probes (no API key) |
+| GET | `/health/live`, `/health/ready` | Liveness and readiness probes |
 
 Query parameters: `from` and `to` (ISO-8601, inclusive, both optional, at most
 `MAX_RANGE_DAYS` apart), `threshold` (1 to 299, defaults to `HIGH_HEART_RATE_THRESHOLD`),
 `page` (1 or more), `limit` (1 to 100).
 
 ```bash
-K='x-api-key: local-dev-key'
 B=http://localhost:3000/api/v1
 
-curl -H "$K" "$B/heart-rate/high-events?from=2024-03-01T00:00:00Z"
-curl -H "$K" "$B/patients/1/heart-rate/analytics?from=2024-03-01T00:00:00Z&to=2024-03-01T23:59:59Z"
-curl -H "$K" "$B/patients/1/request-stats"
+curl "$B/heart-rate/high-events?from=2024-03-01T00:00:00Z"
+curl "$B/patients/1/heart-rate/analytics?from=2024-03-01T00:00:00Z&to=2024-03-01T23:59:59Z"
+curl "$B/patients/1/request-stats"
 ```
 
 Successful responses are wrapped as `{ "data": ..., "meta": { "requestId", "timestamp" } }`.
@@ -66,7 +64,6 @@ Errors use `{ "statusCode", "code", "message", "requestId", "timestamp", "path" 
 |---|---|---|
 | `PORT` | `3000` | HTTP port |
 | `DATABASE_HOST` / `_PORT` / `_USER` / `_PASSWORD` / `_NAME` | none | PostgreSQL connection |
-| `API_KEY` | none | Required in the `x-api-key` header |
 | `HIGH_HEART_RATE_THRESHOLD` | `100` | A reading above this value is an event |
 | `MAX_RANGE_DAYS` | `30` | Widest closed time range one query may ask for |
 | `CORS_ORIGINS` | `*` | Comma-separated allowlist |

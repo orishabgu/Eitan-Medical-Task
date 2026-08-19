@@ -10,7 +10,6 @@ export const envValidationSchema = Joi.object({
   DATABASE_PASSWORD: Joi.string().required(),
   DATABASE_NAME: Joi.string().required(),
 
-  API_KEY: Joi.string().min(8).required(),
   HIGH_HEART_RATE_THRESHOLD: Joi.number().integer().min(1).max(299).default(100),
   MAX_RANGE_DAYS: Joi.number().integer().min(1).default(30),
   CORS_ORIGINS: Joi.string().default('*'),
@@ -21,7 +20,6 @@ export const envValidationSchema = Joi.object({
 export const configuration = () => ({
   nodeEnv: process.env.NODE_ENV ?? 'development',
   port: Number(process.env.PORT ?? 3000),
-  apiKey: process.env.API_KEY as string,
   corsOrigins: (process.env.CORS_ORIGINS ?? '*').split(',').map((origin) => origin.trim()),
   highHeartRateThreshold: Number(process.env.HIGH_HEART_RATE_THRESHOLD ?? 100),
   maxRangeDays: Number(process.env.MAX_RANGE_DAYS ?? 30),

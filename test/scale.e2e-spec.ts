@@ -2,11 +2,9 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
-import { API_KEY_HEADER } from '../src/common/api-key.guard';
 import { SCALE_ID_PREFIX, generateScaleData } from '../src/database/scale-seed';
 import { insertSeedData } from '../src/database/seed';
 import { createTestApp } from './create-app';
-import { TEST_API_KEY } from './global-setup';
 
 const API = '/api/v1';
 const THRESHOLD = 100;
@@ -33,8 +31,7 @@ describe('Scale (e2e)', () => {
   let app: INestApplication<App>;
   let dataSource: DataSource;
 
-  const get = (path: string) =>
-    request(app.getHttpServer()).get(path).set(API_KEY_HEADER, TEST_API_KEY);
+  const get = (path: string) => request(app.getHttpServer()).get(path);
 
   beforeAll(async () => {
     app = await createTestApp();

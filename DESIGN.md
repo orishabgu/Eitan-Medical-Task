@@ -13,7 +13,7 @@ with a single implementation.
 src/
   config/           env schema, validated with Joi at startup
   database/         DataSource, migrations, seed
-  common/           guard, filters, response envelope, shared query DTOs, validators
+  common/           error filter, response envelope, shared query DTOs, validators
   patients/         entity, service, controller
   heart-rate/       readings, high events, analytics
   request-tracking/ counters, service, tracking interceptor
@@ -21,7 +21,7 @@ src/
 ```
 
 Controllers validate input and delegate. Services hold the logic and use TypeORM directly.
-Cross-cutting concerns (auth, logging, response shape, error shape, request tracking) stay
+Cross-cutting concerns (logging, response shape, error shape, request tracking) stay
 out of the business services. Each module is self-contained enough to be moved into its own
 service if the system were ever split up.
 
@@ -175,7 +175,6 @@ Each row below has a test.
 | | Reading the counter | Does not increment it |
 | Transport | Unknown query parameter | `400` |
 | | Unknown route | `404` in the same error shape |
-| | Missing or invalid API key | `401`. Health checks are exempt |
 | | Database unreachable | `503`, with no driver details leaked |
 
 ## Security
@@ -186,14 +185,14 @@ no string interpolation, and the service uses Helmet, a CORS allowlist and rate 
 Docker image runs as a non-root user in a multi-stage build, and secrets come only from
 environment variables that are validated at startup.
 
-**Only patient ids are logged, never names or ages.** API keys and authorization headers are
-redacted from logs.
+**Only patient ids are logged, never names or ages.** Authorization headers are redacted from
+logs.
 
-The API-key guard shows where authentication belongs. It is not a real answer. Production
-would need JWT or OIDC with role-based access control, since a clinician should not be able
-to read every patient, along with TLS termination, encryption at rest, and an audit log of
-who read which record. That audit log is a regulatory requirement here, and it is a separate
-thing from the usage counters this service keeps.
+**There is no authentication.** The API is open, which is fine for reviewing the exercise and
+not fine for real patient data. Production needs JWT or OIDC with role-based access control,
+since a clinician should not be able to read every patient, plus TLS termination, encryption
+at rest, and an audit log of who read which record. That audit log is a regulatory
+requirement, and it is a separate thing from the usage counters this service keeps.
 
 ## Suggested improvements
 

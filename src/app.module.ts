@@ -4,7 +4,6 @@ import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { LoggerModule } from 'nestjs-pino';
-import { ApiKeyGuard } from './common/api-key.guard';
 import { AllExceptionsFilter } from './common/exception.filter';
 import { MaxRangeDaysConstraint } from './common/max-range.validator';
 import { TransformInterceptor } from './common/transform.interceptor';
@@ -31,7 +30,7 @@ import { RequestTrackingModule } from './request-tracking/request-tracking.modul
             level: { production: 'info', test: 'silent' }[env] ?? 'debug',
             transport: env === 'development' ? { target: 'pino-pretty' } : undefined,
             // Patient records are PHI; only ids ever reach the logs, never names or ages.
-            redact: ['req.headers["x-api-key"]', 'req.headers.authorization'],
+            redact: ['req.headers.authorization'],
           },
         };
       },
@@ -66,7 +65,6 @@ import { RequestTrackingModule } from './request-tracking/request-tracking.modul
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
-    { provide: APP_GUARD, useClass: ApiKeyGuard },
     { provide: APP_INTERCEPTOR, useClass: TransformInterceptor },
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
     MaxRangeDaysConstraint,
