@@ -44,8 +44,9 @@ Base path `/api/v1`.
 | GET | `/request-stats` | All counters, most requested first |
 | GET | `/health/live`, `/health/ready` | Probes (no API key) |
 
-Query parameters: `from` and `to` (ISO-8601, inclusive, both optional), `threshold`
-(1 to 299, defaults to `HIGH_HEART_RATE_THRESHOLD`), `page` (1 or more), `limit` (1 to 100).
+Query parameters: `from` and `to` (ISO-8601, inclusive, both optional, at most
+`MAX_RANGE_DAYS` apart), `threshold` (1 to 299, defaults to `HIGH_HEART_RATE_THRESHOLD`),
+`page` (1 or more), `limit` (1 to 100).
 
 ```bash
 K='x-api-key: local-dev-key'
@@ -67,6 +68,7 @@ Errors use `{ "statusCode", "code", "message", "requestId", "timestamp", "path" 
 | `DATABASE_HOST` / `_PORT` / `_USER` / `_PASSWORD` / `_NAME` | none | PostgreSQL connection |
 | `API_KEY` | none | Required in the `x-api-key` header |
 | `HIGH_HEART_RATE_THRESHOLD` | `100` | A reading above this value is an event |
+| `MAX_RANGE_DAYS` | `30` | Widest closed time range one query may ask for |
 | `CORS_ORIGINS` | `*` | Comma-separated allowlist |
 | `RATE_LIMIT_TTL_MS` / `RATE_LIMIT_REQUESTS` | `60000` / `120` | Throttling window |
 

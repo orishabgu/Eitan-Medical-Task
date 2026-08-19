@@ -12,6 +12,7 @@ export const envValidationSchema = Joi.object({
 
   API_KEY: Joi.string().min(8).required(),
   HIGH_HEART_RATE_THRESHOLD: Joi.number().integer().min(1).max(299).default(100),
+  MAX_RANGE_DAYS: Joi.number().integer().min(1).default(30),
   CORS_ORIGINS: Joi.string().default('*'),
   RATE_LIMIT_TTL_MS: Joi.number().integer().min(1).default(60_000),
   RATE_LIMIT_REQUESTS: Joi.number().integer().min(1).default(120),
@@ -23,6 +24,7 @@ export const configuration = () => ({
   apiKey: process.env.API_KEY as string,
   corsOrigins: (process.env.CORS_ORIGINS ?? '*').split(',').map((origin) => origin.trim()),
   highHeartRateThreshold: Number(process.env.HIGH_HEART_RATE_THRESHOLD ?? 100),
+  maxRangeDays: Number(process.env.MAX_RANGE_DAYS ?? 30),
   rateLimit: {
     ttl: Number(process.env.RATE_LIMIT_TTL_MS ?? 60_000),
     limit: Number(process.env.RATE_LIMIT_REQUESTS ?? 120),

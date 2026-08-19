@@ -11,6 +11,7 @@ import {
   isISO8601,
   registerDecorator,
 } from 'class-validator';
+import { MaxRangeDays } from '../max-range.validator';
 
 // Leaves unparseable input untouched so @IsDate produces the 400 with a clear field name.
 // Both `Z` and offset forms (`+03:00`) normalize to the same instant.
@@ -52,6 +53,7 @@ export class TimeRangeQueryDto {
   @IsOptional()
   @Transform(toUtcDate)
   @IsDate({ message: 'from must be a valid ISO-8601 date' })
+  @MaxRangeDays('to')
   from?: Date;
 
   @ApiPropertyOptional({

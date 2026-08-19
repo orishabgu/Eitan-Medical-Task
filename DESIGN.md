@@ -13,7 +13,7 @@ with a single implementation.
 src/
   config/           env schema, validated with Joi at startup
   database/         DataSource, migrations, seed
-  common/           guard, filters, response envelope, shared query DTOs
+  common/           guard, filters, response envelope, shared query DTOs, validators
   patients/         entity, service, controller
   heart-rate/       readings, high events, analytics
   request-tracking/ counters, service, tracking interceptor
@@ -104,6 +104,19 @@ Reading a counter does not increment it. The `request-stats` routes are not trac
   away real data. They just return nothing.
 - **Asking for a page past the end returns 200** with an empty list and the correct total.
 
+**Limiting how much one request can pull.** Three limits work together: `limit` is capped at
+100 rows a page, the throttler caps requests per client, and a closed time range may not span
+more than `MAX_RANGE_DAYS` (30 by default). The range check is a validator that reads the
+limit from configuration through Nest's container, so the number is not baked into a
+decorator.
+
+The cap applies only when both bounds are given, because only then is there a span to
+measure. An open-ended range is still allowed, and is bounded by something else: high events
+are paginated, and analytics is a single-patient aggregate that runs on the
+`(patient_id, timestamp)` index. So the cap catches the accidental multi-year query rather
+than making the API strictly bounded. Making a bounded window mandatory on analytics is the
+next step if this ever serves untrusted callers.
+
 **Errors and responses are shaped in one place.** A response interceptor and a catch-all
 exception filter give every endpoint the same success shape and the same error shape. The
 filter maps Postgres error codes to sensible HTTP statuses and turns everything else into a
@@ -125,6 +138,8 @@ Each row below has a test.
 | | One bound only, or neither | Open-ended on the missing side |
 | | Offset (`+03:00`) vs `Z` | Converted to UTC, same results |
 | | Future timestamps | Accepted, returns empty |
+| | Closed range wider than `MAX_RANGE_DAYS` | `400` |
+| | Closed range of exactly `MAX_RANGE_DAYS` | Valid |
 | Threshold | Not given | Uses the configured default |
 | | Not a number, or outside 1 to 299 | `400`, matching the database check constraint |
 | | Reading exactly at the threshold | Excluded. One above is included |
@@ -169,15 +184,18 @@ Roughly in the order I would do them.
    writes to Postgres, which is what will struggle first under load.
 2. **Switch to keyset pagination** for high events. `OFFSET` gets slower the deeper you page,
    and this is the table that keeps growing.
-3. **Partition `heart_rate_readings` by month**, or move it to TimescaleDB and use continuous
+3. **Cache analytics over closed historical windows.** A range that ends in the past cannot
+   change, so the result can be cached by patient and window and served from Redis instead of
+   being recomputed on every read. Windows that reach up to now must stay uncached.
+4. **Partition `heart_rate_readings` by month**, or move it to TimescaleDB and use continuous
    aggregates for hourly and daily rollups. Analytics over a year of data should not have to
    scan raw rows.
-4. **Add real authentication and an audit log**, as described above.
-5. **Add a write API** with batching, backpressure and idempotency keys. The service only
+5. **Add real authentication and an audit log**, as described above.
+6. **Add a write API** with batching, backpressure and idempotency keys. The service only
    reads today, and the unique constraint is already the right foundation for it.
-6. **Make the threshold per patient.** A single 100 bpm value is clinically wrong, since a
+7. **Make the threshold per patient.** A single 100 bpm value is clinically wrong, since a
    sleeping infant and an adult on a treadmill are not comparable. The threshold should belong
    to the patient or to the care plan.
-7. **Add OpenTelemetry tracing** next to the existing structured logs and health probes.
-8. **Use Testcontainers for the e2e suite**, so it starts its own database instead of relying
+8. **Add OpenTelemetry tracing** next to the existing structured logs and health probes.
+9. **Use Testcontainers for the e2e suite**, so it starts its own database instead of relying
    on one already running.

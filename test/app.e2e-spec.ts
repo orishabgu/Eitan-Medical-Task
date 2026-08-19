@@ -1,5 +1,6 @@
 import { INestApplication, ValidationPipe, VersioningType } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { useContainer } from 'class-validator';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
@@ -20,6 +21,7 @@ describe('Patient heart-rate API (e2e)', () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
 
     app = moduleRef.createNestApplication({ logger: false });
+    useContainer(app.select(AppModule), { fallbackOnErrors: true });
     app.setGlobalPrefix('api');
     app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
     app.useGlobalPipes(
@@ -202,6 +204,14 @@ describe('Patient heart-rate API (e2e)', () => {
 
     it('400s for a timestamp that is not ISO-8601', async () => {
       await get(`${API}/patients/1/heart-rate/analytics?from=not-a-date`).expect(400);
+    });
+
+    it('400s for a range wider than the allowed window', async () => {
+      const response = await get(
+        `${API}/patients/1/heart-rate/analytics?from=2024-01-01T00:00:00Z&to=2025-01-01T00:00:00Z`,
+      ).expect(400);
+
+      expect(JSON.stringify(response.body.message)).toContain('30 days');
     });
   });
 

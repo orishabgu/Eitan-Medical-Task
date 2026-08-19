@@ -1,6 +1,15 @@
+import { ConfigService } from '@nestjs/config';
 import { plainToInstance } from 'class-transformer';
-import { validateSync } from 'class-validator';
+import { useContainer, validateSync } from 'class-validator';
 import { PaginationQueryDto, TimeRangeQueryDto } from './query.dto';
+
+const MAX_RANGE_DAYS = 30;
+
+// Stands in for Nest's container so config-backed constraints resolve outside the app.
+useContainer({
+  get: <T>(cls: new (config: ConfigService) => T): T =>
+    new cls(new ConfigService({ maxRangeDays: MAX_RANGE_DAYS })),
+});
 
 const validate = <T extends object>(cls: new () => T, payload: Record<string, unknown>) => {
   const instance = plainToInstance(cls, payload);
@@ -61,6 +70,32 @@ describe('TimeRangeQueryDto', () => {
 
   it('accepts an empty range', () => {
     expect(validate(TimeRangeQueryDto, {}).errors).toHaveLength(0);
+  });
+
+  it('rejects a range wider than the configured window', () => {
+    const { errors } = validate(TimeRangeQueryDto, {
+      from: '2024-01-01T00:00:00Z',
+      to: '2025-01-01T00:00:00Z',
+    });
+
+    expect(errors[0].property).toBe('from');
+    expect(JSON.stringify(errors)).toContain('30 days');
+  });
+
+  it('accepts a range of exactly the configured window', () => {
+    const from = new Date('2024-03-01T00:00:00Z');
+    const to = new Date(from.getTime() + MAX_RANGE_DAYS * 24 * 60 * 60 * 1000);
+
+    const { errors } = validate(TimeRangeQueryDto, {
+      from: from.toISOString(),
+      to: to.toISOString(),
+    });
+
+    expect(errors).toHaveLength(0);
+  });
+
+  it('does not cap an open-ended range, which pagination bounds instead', () => {
+    expect(validate(TimeRangeQueryDto, { from: '1970-01-01T00:00:00Z' }).errors).toHaveLength(0);
   });
 
   it('accepts future timestamps, since device clocks drift', () => {

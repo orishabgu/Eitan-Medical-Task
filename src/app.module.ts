@@ -6,6 +6,7 @@ import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { LoggerModule } from 'nestjs-pino';
 import { ApiKeyGuard } from './common/api-key.guard';
 import { AllExceptionsFilter } from './common/exception.filter';
+import { MaxRangeDaysConstraint } from './common/max-range.validator';
 import { TransformInterceptor } from './common/transform.interceptor';
 import { AppConfig, configuration, envValidationSchema } from './config/configuration';
 import { HealthModule } from './health/health.module';
@@ -68,6 +69,7 @@ import { RequestTrackingModule } from './request-tracking/request-tracking.modul
     { provide: APP_GUARD, useClass: ApiKeyGuard },
     { provide: APP_INTERCEPTOR, useClass: TransformInterceptor },
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
+    MaxRangeDaysConstraint,
   ],
 })
 export class AppModule {}
