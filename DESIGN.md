@@ -90,6 +90,10 @@ Three details matter here:
 
 Reading a counter does not increment it. The `request-stats` routes are not tracked.
 
+The counter list is paginated and indexed on `(request_count DESC, patient_id)`. There is one
+row per requested patient, so an unbounded list would grow with the patient population, and
+the ordering would sort the whole table on every call.
+
 **Behaviour I had to decide, and why**
 
 - **The threshold is exclusive.** Tachycardia means a heart rate above 100 bpm, so a reading
@@ -136,11 +140,28 @@ the data instead of against figures copied in by hand. The same spec pages throu
 set larger than one page and checks there are no gaps, repeats or reordering, using a dataset
 where every patient shares the same timestamps so the `id` tiebreak actually matters.
 
-Measured on 100006 readings, both indexes are used as intended:
+Measured on 500000 patients and 10 million readings (2.8 GB), loaded at about 27000 rows a
+second:
 
-- high events, default threshold: `Index Scan using idx_hrr_high`, 0.13 ms
-- analytics over a two-week window for one patient: `Bitmap Index Scan using
-  idx_hrr_patient_time`, 0.07 ms
+| Endpoint | Time |
+|---|---|
+| analytics for one patient over a month | 3 ms |
+| patient by id | 3 ms |
+| patients list, first page | 18 ms |
+| patients list, page 10000 | 28 ms |
+| high events, first page (4.86M matching) | 240 ms |
+| high events, page 5000 | 450 ms |
+
+**The count was the bottleneck, not the page fetch.** High events first measured at 2.0
+seconds. Counting the matching rows took 494 ms of that while fetching the page took 97 ms,
+because the query joined `patients` to get each name and the count inherited that join,
+hash-joining all 500000 patients only to produce a number. The join cannot change the count,
+since `patient_id` is a NOT NULL foreign key, so the count now runs on the filter alone and
+the join is added only for the page. That took the endpoint from 2.0 s to 240 ms.
+
+What remains is inherent to offset pagination: `OFFSET 100000` still walks the rows it skips,
+which is why page 5000 costs roughly twice page 1. Keyset pagination is the fix, and it is
+listed below.
 
 ## Handled edge cases
 
@@ -201,7 +222,8 @@ Roughly in the order I would do them.
 1. **Move the counters off the request path.** Use `Redis INCR` with a periodic flush, or
    publish an event to RabbitMQ and let a consumer aggregate it. Right now every tracked read
    writes to Postgres, which is what will struggle first under load.
-2. **Switch to keyset pagination** for high events. `OFFSET` gets slower the deeper you page,
+2. **Switch to keyset pagination** for high events, now the measured next bottleneck.
+   `OFFSET` gets slower the deeper you page,
    and this is the table that keeps growing.
 3. **Cache analytics over closed historical windows.** A range that ends in the past cannot
    change, so the result can be cached by patient and window and served from Redis instead of

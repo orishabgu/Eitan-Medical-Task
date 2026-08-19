@@ -40,7 +40,7 @@ Base path `/api/v1`.
 | GET | `/patients/:id/heart-rate/high-events` | The same, for one patient |
 | GET | `/patients/:id/heart-rate/analytics` | Average, min and max over a range |
 | GET | `/patients/:id/request-stats` | How often this patient has been requested |
-| GET | `/request-stats` | All counters, most requested first |
+| GET | `/request-stats` | Counters, most requested first (`page`, `limit`) |
 | GET | `/health/live`, `/health/ready` | Liveness and readiness probes |
 
 Query parameters: `from` and `to` (ISO-8601, inclusive, both optional, at most

@@ -211,7 +211,7 @@ describe('Patient heart-rate API (e2e)', () => {
       await get(`${API}/patients/missing`).expect(404);
 
       const response = await get(`${API}/request-stats`).expect(200);
-      expect(response.body.data).toHaveLength(0);
+      expect(response.body.data.items).toHaveLength(0);
     });
 
     it('does not count reading the counter itself', async () => {
@@ -246,10 +246,23 @@ describe('Patient heart-rate API (e2e)', () => {
 
       const response = await get(`${API}/request-stats`).expect(200);
 
-      expect(response.body.data.map((row: { patientId: string }) => row.patientId)).toEqual([
+      expect(response.body.data.items.map((row: { patientId: string }) => row.patientId)).toEqual([
         '2',
         '1',
       ]);
+      expect(response.body.data.total).toBe(2);
+    });
+
+    it('pages the counter list', async () => {
+      await get(`${API}/patients/2`).expect(200);
+      await get(`${API}/patients/1`).expect(200);
+      await countFor('2', 1);
+      await countFor('1', 1);
+
+      const response = await get(`${API}/request-stats?limit=1&page=2`).expect(200);
+
+      expect(response.body.data).toMatchObject({ total: 2, page: 2, limit: 1 });
+      expect(response.body.data.items).toHaveLength(1);
     });
   });
 

@@ -39,8 +39,24 @@ export class HeartRateService {
 
     const threshold = query.threshold ?? this.config.get<number>('highHeartRateThreshold')!;
 
-    const qb = this.readings
+    const matching = this.readings
       .createQueryBuilder('reading')
+      // Strictly greater: a reading of exactly the threshold is not a tachycardia event.
+      .where('reading.heart_rate > :threshold', { threshold });
+
+    if (patientId) {
+      matching.andWhere('reading.patient_id = :patientId', { patientId });
+    }
+    this.applyTimeRange(matching, query);
+
+    // Counted without joining patients. patient_id is a NOT NULL foreign key, so the join
+    // cannot change the count, and joining every matching row to count it is the single
+    // most expensive thing this query does once the table is large.
+    const total = await matching.clone().getCount();
+
+    // id breaks ties so pagination stays deterministic across pages.
+    const items = await matching
+      .clone()
       .innerJoin('reading.patient', 'patient')
       .select([
         'reading.patientId AS "patientId"',
@@ -48,18 +64,6 @@ export class HeartRateService {
         'reading.timestamp AS "timestamp"',
         'reading.heartRate AS "heartRate"',
       ])
-      // Strictly greater: a reading of exactly the threshold is not a tachycardia event.
-      .where('reading.heart_rate > :threshold', { threshold });
-
-    if (patientId) {
-      qb.andWhere('reading.patient_id = :patientId', { patientId });
-    }
-    this.applyTimeRange(qb, query);
-
-    const total = await qb.getCount();
-
-    // id breaks ties so pagination stays deterministic across pages.
-    const items = await qb
       .orderBy('reading.timestamp', 'DESC')
       .addOrderBy('reading.id', 'ASC')
       .offset((query.page - 1) * query.limit)

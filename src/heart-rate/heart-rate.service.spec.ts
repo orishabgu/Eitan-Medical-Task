@@ -7,6 +7,11 @@ import { HeartRateReading } from './heart-rate-reading.entity';
 import { HeartRateService } from './heart-rate.service';
 
 const createQueryBuilder = () => ({
+  // The service clones the filter query so counting does not join patients. The clone
+  // returns the same mock, so assertions still see every call.
+  clone: jest.fn(function (this: unknown) {
+    return this;
+  }),
   innerJoin: jest.fn().mockReturnThis(),
   select: jest.fn().mockReturnThis(),
   addSelect: jest.fn().mockReturnThis(),
@@ -134,6 +139,14 @@ describe('HeartRateService', () => {
 
       expect(qb.offset).toHaveBeenCalledWith(20);
       expect(qb.limit).toHaveBeenCalledWith(10);
+    });
+
+    it('counts before joining patients, since the join cannot change the total', async () => {
+      await service.findHighEvents({ page: 1, limit: 20 });
+
+      expect(qb.getCount.mock.invocationCallOrder[0]).toBeLessThan(
+        qb.innerJoin.mock.invocationCallOrder[0],
+      );
     });
 
     it('returns an empty page with the real total when paging past the end', async () => {

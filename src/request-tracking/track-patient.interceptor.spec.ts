@@ -28,8 +28,7 @@ describe('TrackPatientInterceptor', () => {
     } as unknown as RequestTrackingService);
   });
 
-  const markTracked = (paramName = 'id') =>
-    jest.spyOn(reflector, 'get').mockReturnValue(paramName);
+  const markTracked = (paramName = 'id') => jest.spyOn(reflector, 'get').mockReturnValue(paramName);
 
   it('increments exactly once for a successful tracked request', async () => {
     markTracked();
