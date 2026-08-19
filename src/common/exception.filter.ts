@@ -19,7 +19,7 @@ export interface ErrorResponse {
 }
 
 // Postgres error codes that are caused by the client, not by us.
-const CLIENT_ERROR_SQL_STATES: Record<string, { status: number; code: string }> = {
+const CLIENT_ERROR_SQL_STATES: Record<string, { status: HttpStatus; code: string }> = {
   '23505': { status: HttpStatus.CONFLICT, code: 'DUPLICATE_RESOURCE' },
   '23503': { status: HttpStatus.BAD_REQUEST, code: 'RELATED_RESOURCE_NOT_FOUND' },
   '23514': { status: HttpStatus.BAD_REQUEST, code: 'VALUE_OUT_OF_RANGE' },
@@ -59,7 +59,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
   }
 
   private describe(exception: unknown): {
-    status: number;
+    status: HttpStatus;
     code: string;
     message: string | string[];
   } {

@@ -29,7 +29,7 @@ describe('TrackPatientInterceptor', () => {
   });
 
   const markTracked = (paramName = 'id') =>
-    jest.spyOn(reflector, 'get').mockReturnValue(paramName as never);
+    jest.spyOn(reflector, 'get').mockReturnValue(paramName);
 
   it('increments exactly once for a successful tracked request', async () => {
     markTracked();
@@ -55,7 +55,7 @@ describe('TrackPatientInterceptor', () => {
   });
 
   it('ignores handlers that are not marked for tracking', async () => {
-    jest.spyOn(reflector, 'get').mockReturnValue(undefined as never);
+    jest.spyOn(reflector, 'get').mockReturnValue(undefined);
     const next: CallHandler = { handle: () => of({}) };
 
     await firstValueFrom(interceptor.intercept(contextWithParams({ id: '1' }), next));

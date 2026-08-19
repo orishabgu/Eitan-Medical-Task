@@ -4,6 +4,9 @@
   "description": "Patient heart-rate telemetry service",
   "license": "UNLICENSED",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "build": "nest build",
     "start": "nest start",
@@ -15,6 +18,7 @@
     "migration:run": "typeorm-ts-node-commonjs migration:run -d src/database/data-source.ts",
     "migration:revert": "typeorm-ts-node-commonjs migration:revert -d src/database/data-source.ts",
     "seed": "ts-node src/database/seed.ts",
+    "seed:scale": "ts-node src/database/scale-seed.ts",
     "db:setup:dev": "npm run migration:run && npm run seed",
     "db:setup": "typeorm migration:run -d dist/database/data-source.js && node dist/database/seed.js",
     "test": "jest",

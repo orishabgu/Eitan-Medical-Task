@@ -1,11 +1,9 @@
-import { INestApplication, ValidationPipe, VersioningType } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
-import { useContainer } from 'class-validator';
+import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
-import { AppModule } from '../src/app.module';
 import { API_KEY_HEADER } from '../src/common/api-key.guard';
+import { createTestApp } from './create-app';
 import { TEST_API_KEY } from './global-setup';
 
 const API = '/api/v1';
@@ -18,24 +16,7 @@ describe('Patient heart-rate API (e2e)', () => {
     request(app.getHttpServer()).get(path).set(API_KEY_HEADER, TEST_API_KEY);
 
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
-
-    app = moduleRef.createNestApplication({ logger: false });
-    useContainer(app.select(AppModule), { fallbackOnErrors: true });
-    app.setGlobalPrefix('api');
-    app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
-        transformOptions: { enableImplicitConversion: false },
-      }),
-    );
-    // Listening for real, so concurrent requests share one server instead of racing to
-    // open ephemeral listeners.
-    await app.listen(0);
-
+    app = await createTestApp();
     dataSource = app.get(DataSource);
   });
 
@@ -74,14 +55,12 @@ describe('Patient heart-rate API (e2e)', () => {
       expect(response.body.data.total).toBe(2);
       expect(response.body.data.items).toEqual([
         expect.objectContaining({ patientId: '2', heartRate: 105 }),
-        expect.objectContaining({ patientId: '1', heartRate: 101 }),
+        expect.objectContaining({
+          patientId: '1',
+          heartRate: 101,
+          timestamp: '2024-03-01T10:30:00.000Z',
+        }),
       ]);
-    });
-
-    it('includes the timestamp of each event', async () => {
-      const response = await get(`${API}/heart-rate/high-events`).expect(200);
-
-      expect(response.body.data.items[1].timestamp).toBe('2024-03-01T10:30:00.000Z');
     });
 
     it('excludes a reading that sits exactly on the threshold', async () => {

@@ -82,6 +82,15 @@ npm run test:e2e  # end-to-end, needs Postgres running (uses its own eitan_medic
 npm run lint
 ```
 
+To try the API against a larger dataset, generate one:
+
+```bash
+SCALE_PATIENTS=200 SCALE_READINGS=500 npm run seed:scale   # 100k readings
+```
+
+The rows are deterministic and their ids are prefixed `scale-`, so
+`DELETE FROM patients WHERE id LIKE 'scale-%'` removes them again.
+
 ## Design notes
 
 See **[DESIGN.md](DESIGN.md)** for the architecture, the decisions and their trade-offs,

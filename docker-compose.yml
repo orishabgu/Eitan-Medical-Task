@@ -30,9 +30,19 @@ services:
       DATABASE_NAME: ${DATABASE_NAME:-eitan_medical}
       API_KEY: ${API_KEY:-local-dev-key}
       HIGH_HEART_RATE_THRESHOLD: ${HIGH_HEART_RATE_THRESHOLD:-100}
+      MAX_RANGE_DAYS: ${MAX_RANGE_DAYS:-30}
       CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      RATE_LIMIT_TTL_MS: ${RATE_LIMIT_TTL_MS:-60000}
+      RATE_LIMIT_REQUESTS: ${RATE_LIMIT_REQUESTS:-120}
     ports:
       - '3000:3000'
+    healthcheck:
+      # 127.0.0.1, not localhost: that resolves to ::1 first and the server binds IPv4.
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3000/api/v1/health/live']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
 volumes:
   postgres_data:

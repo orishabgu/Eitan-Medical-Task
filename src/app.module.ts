@@ -25,10 +25,10 @@ import { RequestTrackingModule } from './request-tracking/request-tracking.modul
     LoggerModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService<AppConfig, true>) => {
-        const env = config.get('nodeEnv');
+        const env = config.get('nodeEnv', { infer: true });
         return {
           pinoHttp: {
-            level: { production: 'info', test: 'silent' }[env as string] ?? 'debug',
+            level: { production: 'info', test: 'silent' }[env] ?? 'debug',
             transport: env === 'development' ? { target: 'pino-pretty' } : undefined,
             // Patient records are PHI; only ids ever reach the logs, never names or ages.
             redact: ['req.headers["x-api-key"]', 'req.headers.authorization'],

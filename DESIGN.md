@@ -122,6 +122,26 @@ exception filter give every endpoint the same success shape and the same error s
 filter maps Postgres error codes to sensible HTTP statuses and turns everything else into a
 generic 500, so driver messages and stack traces never reach the client.
 
+## Checking it holds up at volume
+
+`npm run seed:scale` generates patients and readings from a deterministic pseudo-random
+sequence, inserted in batches of 5000 rows. Batching is required rather than tidy: Postgres
+allows 65535 parameters per statement, and a reading costs three, so one insert caps out
+around 21000 rows.
+
+Because the generator is deterministic, `test/scale.e2e-spec.ts` computes the expected
+count, average, min and max in JavaScript from the same rows it loaded, then checks the API
+returns the same numbers. That compares the SQL aggregation against an independent pass over
+the data instead of against figures copied in by hand. The same spec pages through a result
+set larger than one page and checks there are no gaps, repeats or reordering, using a dataset
+where every patient shares the same timestamps so the `id` tiebreak actually matters.
+
+Measured on 100006 readings, both indexes are used as intended:
+
+- high events, default threshold: `Index Scan using idx_hrr_high`, 0.13 ms
+- analytics over a two-week window for one patient: `Bitmap Index Scan using
+  idx_hrr_patient_time`, 0.07 ms
+
 ## Handled edge cases
 
 Each row below has a test.

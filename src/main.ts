@@ -1,10 +1,9 @@
-import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { useContainer } from 'class-validator';
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
+import { configureApp } from './app-setup';
 import { AppModule } from './app.module';
 import { API_KEY_HEADER } from './common/api-key.guard';
 import { AppConfig } from './config/configuration';
@@ -18,20 +17,7 @@ async function bootstrap(): Promise<void> {
   app.enableCors({ origin: config.get('corsOrigins', { infer: true }) });
   app.enableShutdownHooks();
 
-  // Lets custom validator constraints inject providers such as ConfigService.
-  useContainer(app.select(AppModule), { fallbackOnErrors: true });
-
-  app.setGlobalPrefix('api');
-  app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
-
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-      transformOptions: { enableImplicitConversion: false },
-    }),
-  );
+  configureApp(app);
 
   const swagger = new DocumentBuilder()
     .setTitle('Patient Heart-Rate Service')
