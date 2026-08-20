@@ -1,6 +1,12 @@
 import { Controller, Get, Param, Query, UseInterceptors } from '@nestjs/common';
-import { ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiNotFoundResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiEnvelopeResponse,
+  ApiPaginatedEnvelopeResponse,
+  ErrorResponseDto,
+} from '../common/dto/api-response.dto';
 import { PaginationQueryDto } from '../common/dto/query.dto';
+import { PatientRequestStatsDto } from '../request-tracking/dto/patient-request-stats.dto';
 import { RequestTrackingService } from '../request-tracking/request-tracking.service';
 import { TrackPatientRequest } from '../request-tracking/track-patient.decorator';
 import { TrackPatientInterceptor } from '../request-tracking/track-patient.interceptor';
@@ -19,7 +25,7 @@ export class PatientsController {
 
   @Get()
   @ApiOperation({ summary: 'List patients' })
-  @ApiOkResponse({ type: PatientResponseDto, isArray: true })
+  @ApiPaginatedEnvelopeResponse(PatientResponseDto)
   findAll(@Query() query: PaginationQueryDto) {
     return this.patients.findAll(query.page, query.limit);
   }
@@ -27,8 +33,8 @@ export class PatientsController {
   @Get(':id')
   @TrackPatientRequest()
   @ApiOperation({ summary: 'Get a patient by id' })
-  @ApiOkResponse({ type: PatientResponseDto })
-  @ApiNotFoundResponse({ description: 'Patient does not exist' })
+  @ApiEnvelopeResponse(PatientResponseDto)
+  @ApiNotFoundResponse({ description: 'Patient does not exist', type: ErrorResponseDto })
   findOne(@Param() params: PatientIdParamDto) {
     return this.patients.findOne(params.id);
   }
@@ -37,7 +43,8 @@ export class PatientsController {
   // change it.
   @Get(':id/request-stats')
   @ApiOperation({ summary: 'How many times this patient has been requested' })
-  @ApiNotFoundResponse({ description: 'Patient does not exist' })
+  @ApiEnvelopeResponse(PatientRequestStatsDto)
+  @ApiNotFoundResponse({ description: 'Patient does not exist', type: ErrorResponseDto })
   async getRequestStats(@Param() params: PatientIdParamDto) {
     await this.patients.assertExists(params.id);
     return this.tracking.findByPatient(params.id);

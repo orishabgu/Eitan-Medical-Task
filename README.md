@@ -32,33 +32,150 @@ npm run test:e2e         # end-to-end tests
 
 ## Endpoints
 
-Base path `/api/v1`.
+Base path `/api/v1`. All examples assume `B=http://localhost:3000/api/v1`. Full interactive
+docs at [/docs](http://localhost:3000/docs).
 
-| Method | Path | Description |
-|---|---|---|
-| GET | `/patients` | List patients (`page`, `limit`) |
-| GET | `/patients/:id` | One patient |
-| GET | `/heart-rate/high-events` | Readings above the threshold, across all patients |
-| GET | `/patients/:id/heart-rate/high-events` | The same, for one patient |
-| GET | `/patients/:id/heart-rate/analytics` | Average, min and max over a range |
-| GET | `/patients/:id/request-stats` | How often this patient has been requested |
-| GET | `/request-stats` | Counters, most requested first (`page`, `limit`) |
-| GET | `/health/live`, `/health/ready` | Liveness and readiness probes |
+### Shared query parameters
 
-Query parameters: `from` and `to` (ISO-8601, inclusive, both optional, at most
-`MAX_RANGE_DAYS` apart), `threshold` (1 to 299, defaults to `HIGH_HEART_RATE_THRESHOLD`),
-`page` (1 or more), `limit` (1 to 100).
+| Parameter | Type | Range / default | Applies to |
+|---|---|---|---|
+| `page` | integer | 1 or more, default `1` | any list endpoint |
+| `limit` | integer | 1 to 100, default `20` | any list endpoint |
+| `from` | ISO-8601 | optional, inclusive | high events, analytics |
+| `to` | ISO-8601 | optional, inclusive, must be at or after `from` | high events, analytics |
+| `threshold` | integer | 1 to 299, default `HIGH_HEART_RATE_THRESHOLD` (100) | high events |
+
+`from` and `to` accept `Z` or an offset (`+03:00`); both are normalised to UTC. When both are
+given they may not span more than `MAX_RANGE_DAYS` (30). Any unknown query parameter is a
+`400`, not silently ignored.
+
+---
+
+### `GET /patients`
+
+Lists patients, ordered by id.
+
+| Query | Notes |
+|---|---|
+| `page`, `limit` | pagination |
 
 ```bash
-B=http://localhost:3000/api/v1
+curl "$B/patients"
+curl "$B/patients?page=2&limit=50"
+```
 
-curl "$B/heart-rate/high-events?from=2024-03-01T00:00:00Z"
+### `GET /patients/:id`
+
+A single patient. `404` if the id is unknown. **Counted** against this patient's request
+total.
+
+```bash
+curl "$B/patients/1"
+```
+
+### `GET /heart-rate/high-events`
+
+Readings strictly above the threshold, across all patients, newest first. A reading exactly
+at the threshold is not an event.
+
+| Query | Notes |
+|---|---|
+| `from`, `to` | narrow the time window |
+| `threshold` | override the default 100 bpm |
+| `page`, `limit` | pagination |
+
+```bash
+curl "$B/heart-rate/high-events"
+curl "$B/heart-rate/high-events?from=2024-03-01T00:00:00Z&to=2024-03-02T00:00:00Z"
+curl "$B/heart-rate/high-events?threshold=120&limit=5"
+```
+
+### `GET /patients/:id/heart-rate/high-events`
+
+The same, restricted to one patient. `404` if the patient does not exist, rather than an
+empty list. **Counted.**
+
+```bash
+curl "$B/patients/1/heart-rate/high-events?from=2024-03-01T00:00:00Z"
+```
+
+### `GET /patients/:id/heart-rate/analytics`
+
+Count, average, min and max heart rate for one patient over a time range, aggregated in SQL.
+`404` if the patient does not exist. If the patient exists but has no readings in the window,
+returns `200` with `count: 0` and `null` statistics, never a division by zero. **Counted.**
+
+| Query | Notes |
+|---|---|
+| `from`, `to` | both optional; omitted means open-ended on that side |
+
+```bash
+curl "$B/patients/1/heart-rate/analytics"
 curl "$B/patients/1/heart-rate/analytics?from=2024-03-01T00:00:00Z&to=2024-03-01T23:59:59Z"
+```
+
+### `GET /patients/:id/request-stats`
+
+How many times this patient's data has been read. `0` for a patient never requested, `404`
+for one that does not exist. Reading this does **not** increment the counter.
+
+```bash
 curl "$B/patients/1/request-stats"
 ```
 
-Successful responses are wrapped as `{ "data": ..., "meta": { "requestId", "timestamp" } }`.
-Errors use `{ "statusCode", "code", "message", "requestId", "timestamp", "path" }`.
+### `GET /request-stats`
+
+All counters, most requested first, with `patientId` breaking ties.
+
+| Query | Notes |
+|---|---|
+| `page`, `limit` | pagination |
+
+```bash
+curl "$B/request-stats?limit=10"
+```
+
+### `GET /health/live` and `GET /health/ready`
+
+`live` reports that the process is up. `ready` also pings the database and returns `503` when
+it is unreachable, so an orchestrator can stop routing traffic.
+
+```bash
+curl "$B/health/live"
+curl "$B/health/ready"
+```
+
+---
+
+### Response shape
+
+Every success is wrapped:
+
+```json
+{ "data": { "...": "endpoint payload" },
+  "meta": { "requestId": "42", "timestamp": "2024-03-01T10:30:00.000Z" } }
+```
+
+List endpoints put the page inside `data`:
+
+```json
+{ "data": { "items": [], "total": 128, "page": 1, "limit": 20 }, "meta": {} }
+```
+
+Every error uses one shape, with a stable machine-readable `code`:
+
+```json
+{ "statusCode": 404, "code": "NOT_FOUND", "message": "Patient 999 not found",
+  "requestId": "42", "timestamp": "2024-03-01T10:30:00.000Z", "path": "/api/v1/patients/999" }
+```
+
+| Status | `code` | Cause |
+|---|---|---|
+| 400 | `VALIDATION_FAILED` | bad date, reversed range, range over the cap, out-of-range `threshold`/`page`/`limit`, unknown parameter |
+| 404 | `NOT_FOUND` | unknown patient, or unknown route |
+| 429 | `RATE_LIMIT_EXCEEDED` | throttle limit hit |
+| 503 | `SERVICE_UNAVAILABLE` | database unreachable |
+| 500 | `INTERNAL_ERROR` | anything else, with no driver detail leaked |
 
 ## Environment
 

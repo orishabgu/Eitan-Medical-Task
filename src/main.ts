@@ -28,4 +28,11 @@ async function bootstrap(): Promise<void> {
   await app.listen(config.get('port', { infer: true }), '0.0.0.0');
 }
 
-void bootstrap();
+// Startup can fail on an unreachable database, an invalid environment or a taken port. Without
+// this the promise rejects unhandled and Node exits on a raw trace instead of a clear message.
+bootstrap().catch((error: unknown) => {
+  // console, not the app logger: pino writes asynchronously and process.exit would cut the
+  // message off, so a startup failure would be silent.
+  console.error('Failed to start', error instanceof Error ? error.stack : String(error));
+  process.exit(1);
+});

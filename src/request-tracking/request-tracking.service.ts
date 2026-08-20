@@ -2,13 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PaginatedDto } from '../common/dto/query.dto';
+import { PatientRequestStatsDto } from './dto/patient-request-stats.dto';
 import { PatientRequestCounter } from './patient-request-counter.entity';
-
-export interface PatientRequestStats {
-  patientId: string;
-  requestCount: number;
-  lastRequested: Date | null;
-}
 
 @Injectable()
 export class RequestTrackingService {
@@ -31,14 +26,14 @@ export class RequestTrackingService {
     );
   }
 
-  async findByPatient(patientId: string): Promise<PatientRequestStats> {
+  async findByPatient(patientId: string): Promise<PatientRequestStatsDto> {
     const counter = await this.counters.findOne({ where: { patientId } });
     return counter ? this.toStats(counter) : { patientId, requestCount: 0, lastRequested: null };
   }
 
   // Paginated: there is one counter row per requested patient, so an unbounded list grows
   // with the patient population. patientId breaks ties so paging is deterministic.
-  async findAll(page: number, limit: number): Promise<PaginatedDto<PatientRequestStats>> {
+  async findAll(page: number, limit: number): Promise<PaginatedDto<PatientRequestStatsDto>> {
     const [counters, total] = await this.counters.findAndCount({
       order: { requestCount: 'DESC', patientId: 'ASC' },
       skip: (page - 1) * limit,
@@ -48,7 +43,7 @@ export class RequestTrackingService {
     return { items: counters.map((counter) => this.toStats(counter)), total, page, limit };
   }
 
-  private toStats(counter: PatientRequestCounter): PatientRequestStats {
+  private toStats(counter: PatientRequestCounter): PatientRequestStatsDto {
     return {
       patientId: counter.patientId,
       // Postgres BIGINT arrives as a string to avoid silent precision loss.
