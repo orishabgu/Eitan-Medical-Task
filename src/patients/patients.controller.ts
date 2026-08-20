@@ -5,7 +5,7 @@ import { RequestTrackingService } from '../request-tracking/request-tracking.ser
 import { TrackPatientRequest } from '../request-tracking/track-patient.decorator';
 import { TrackPatientInterceptor } from '../request-tracking/track-patient.interceptor';
 import { PatientIdParamDto } from './dto/patient-id.dto';
-import { Patient } from './patient.entity';
+import { PatientResponseDto } from './dto/patient-response.dto';
 import { PatientsService } from './patients.service';
 
 @ApiTags('patients')
@@ -19,7 +19,7 @@ export class PatientsController {
 
   @Get()
   @ApiOperation({ summary: 'List patients' })
-  @ApiOkResponse({ type: Patient, isArray: true })
+  @ApiOkResponse({ type: PatientResponseDto, isArray: true })
   findAll(@Query() query: PaginationQueryDto) {
     return this.patients.findAll(query.page, query.limit);
   }
@@ -27,7 +27,7 @@ export class PatientsController {
   @Get(':id')
   @TrackPatientRequest()
   @ApiOperation({ summary: 'Get a patient by id' })
-  @ApiOkResponse({ type: Patient })
+  @ApiOkResponse({ type: PatientResponseDto })
   @ApiNotFoundResponse({ description: 'Patient does not exist' })
   findOne(@Param() params: PatientIdParamDto) {
     return this.patients.findOne(params.id);

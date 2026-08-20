@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PaginatedDto } from '../common/dto/query.dto';
+import { PatientResponseDto } from './dto/patient-response.dto';
 import { Patient } from './patient.entity';
 
 @Injectable()
@@ -11,21 +12,21 @@ export class PatientsService {
     private readonly patients: Repository<Patient>,
   ) {}
 
-  async findAll(page: number, limit: number): Promise<PaginatedDto<Patient>> {
+  async findAll(page: number, limit: number): Promise<PaginatedDto<PatientResponseDto>> {
     const [items, total] = await this.patients.findAndCount({
       order: { id: 'ASC' },
       skip: (page - 1) * limit,
       take: limit,
     });
-    return { items, total, page, limit };
+    return { items: items.map((item) => PatientResponseDto.from(item)), total, page, limit };
   }
 
-  async findOne(id: string): Promise<Patient> {
+  async findOne(id: string): Promise<PatientResponseDto> {
     const patient = await this.patients.findOne({ where: { id } });
     if (!patient) {
       throw new NotFoundException(`Patient ${id} not found`);
     }
-    return patient;
+    return PatientResponseDto.from(patient);
   }
 
   // Callers that only need the existence check avoid loading the row's PHI.

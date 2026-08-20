@@ -14,7 +14,7 @@ src/
   config/           env schema, validated with Joi at startup
   database/         DataSource, migrations, seed
   common/           error filter, response envelope, shared query DTOs, validators
-  patients/         entity, service, controller
+  patients/         entity, service, controller, DTOs
   heart-rate/       readings, high events, analytics
   request-tracking/ counters, service, tracking interceptor
   health/           liveness and readiness probes
@@ -126,6 +126,10 @@ exception filter give every endpoint the same success shape and the same error s
 filter maps Postgres error codes to sensible HTTP statuses and turns everything else into a
 generic 500, so driver messages and stack traces never reach the client.
 
+**Endpoints return response DTOs, never entities.** `PatientResponseDto` lists its fields
+explicitly, so a column added to the table cannot leak through the API by accident. A unit
+test asserts exactly that.
+
 ## Checking it holds up at volume
 
 `npm run seed:scale` generates patients and readings from a deterministic pseudo-random
@@ -232,11 +236,14 @@ Roughly in the order I would do them.
    aggregates for hourly and daily rollups. Analytics over a year of data should not have to
    scan raw rows.
 5. **Add real authentication and an audit log**, as described above.
-6. **Add a write API** with batching, backpressure and idempotency keys. The service only
+6. **Require mTLS for device ingest.** Readings come from infusion pumps rather than
+   browsers, so each device should present a client certificate, with per-device identity,
+   rotation and revocation handled at the ingress.
+7. **Add a write API** with batching, backpressure and idempotency keys. The service only
    reads today, and the unique constraint is already the right foundation for it.
-7. **Make the threshold per patient.** A single 100 bpm value is clinically wrong, since a
+8. **Make the threshold per patient.** A single 100 bpm value is clinically wrong, since a
    sleeping infant and an adult on a treadmill are not comparable. The threshold should belong
    to the patient or to the care plan.
-8. **Add OpenTelemetry tracing** next to the existing structured logs and health probes.
-9. **Use Testcontainers for the e2e suite**, so it starts its own database instead of relying
+9. **Add OpenTelemetry tracing** next to the existing structured logs and health probes.
+10. **Use Testcontainers for the e2e suite**, so it starts its own database instead of relying
    on one already running.
